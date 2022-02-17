@@ -45,6 +45,9 @@ jobs:
       with:
         name: artifacts
     - name: Deploy to CloudHub
+      env:
+        USERNAME: ${{ secrets.cloudhub_username }}
+        PASSWORD: ${{ secrets.cloudhub_password }}
       run: |
         artifactName=$(ls *.jar | head -1)
         mvn deploy -DmuleDeploy -Dusername=${{ cloudhub_username}} -Dpassword=${{ cloudhub_password }} -Denvironment=${{ uat_environment }} -DapplicationName=${{ uat_application_name }} -DworkerType=${{ worker_type }}
