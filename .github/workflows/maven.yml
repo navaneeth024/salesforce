@@ -6,8 +6,7 @@ name: Java CI with Maven
 on:
   push:
     branches: [ master ]
-  pull_request:
-    branches: [ master ]
+  
 
 jobs:
   build:
@@ -23,7 +22,5 @@ jobs:
         distribution: 'temurin'
         cache: maven
     - name: Deploy to CloudHub
-      env:
-        USERNAME: ${{ secrets.cloudhub_username }}
-        PASSWORD: ${{ secrets.cloudhub_password }}
+      
       run:  mvn deploy -DmuleDeploy -Dusername=${{ cloudhub_username}} -Dpassword=${{ cloudhub_password }} -Denvironment=${{ uat_environment }} -DapplicationName=${{ uat_application_name }} -DworkerType=${{ worker_type}}
