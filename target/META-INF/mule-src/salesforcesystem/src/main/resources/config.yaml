@@ -1,0 +1,12 @@
+http:
+  port: "8081"
+  
+salesforce:
+  client_id: "3MVG9pRzvMkjMb6mLM4Mp7jSZ_450pdPF5GiCgtE91YRncMYSsOvkrZR5Oe2eYrNxqP8B0Qf.wJH2hYxdlT0y"
+  client_secret: "F5E8F4DF70FA4C1024CC764F849E71685351CCBE829335339580C2A92460F9DE"
+  username: "hdproject@hexdron.com"
+  password: "saleforce1"
+  access_tocken: "NSnqyLL9gs5YWMzCVHWHlqZr" 
+  callback: "/callback"
+  authorize: "/authorize"
+  external_callback: "http://localhost:8081/callback"  

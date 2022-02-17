@@ -1,0 +1,223 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:salesforce-composite="http://www.mulesoft.org/schema/mule/salesforce-composite"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/salesforce-composite http://www.mulesoft.org/schema/mule/salesforce-composite/current/mule-salesforce-composite.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd">
+	<flow name="insertion" doc:id="d255dfd4-453a-4f6b-9f76-313686352311" >
+		<logger level="INFO" doc:name="Logger" doc:id="2207c347-2a1e-48dc-a346-9262fff4b256" />
+		<salesforce-composite:execute-composite-request doc:name="Execute composite request" doc:id="a4231914-9012-46ad-90aa-24871c520ec9" config-ref="Salesforce_Composite_Config1"/>
+		<ee:transform doc:name="Transform Message" doc:id="06e70997-32a1-4759-a4c8-b0a0ce00f4ed" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="leadCheckFlow" doc:id="3f2c7c3f-4937-493f-af98-0bbb9b613967" >
+		<ee:transform doc:name="Transform Message" doc:id="922f249b-976b-415a-a781-be82eb20c7ee" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="lead_data" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+				<ee:set-variable variableName="contactId" ><![CDATA[%dw 2.0
+output application/json
+---
+attributes.queryParams.contactId]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="6dc500c8-6e84-49bc-a223-5889055eae8d" />
+		<salesforce:query doc:name="Query" doc:id="54682d1a-c67b-4ee7-9a1b-7bde3e46bb05" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT Id FROM Lead WHERE Email = :email AND Phone = :phone AND Expected_Service__c = :requestType 
+AND Vehicle_Model__c = :model]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[{
+	email : "'" ++ vars.lead_data."parts"."email"."content" as String ++ "'",
+	phone : "'" ++ vars.lead_data."parts"."phone"."content" as String ++ "'",
+	requestType : "'" ++ vars.lead_data."parts"."service_type"."content" as String ++ "'",
+	model : "'" ++ vars.lead_data."parts"."vehicle_model"."content" as String ++ "'"
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<choice doc:name="Choice" doc:id="18d58439-68bb-4014-a09f-35cdc2434800" >
+			<when expression="#[payload.Id == null]">
+				<ee:transform doc:name="Transform Message" doc:id="5629ac41-de64-4438-adab-205c9f5e941f" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+import * from modules::postcode
+import * from modules::vehicle
+output application/json
+---
+{
+"compositeRequest" : [
+{
+  "method" : "POST",
+  "url" : "/services/data/v53.0/sobjects/Lead",
+  "referenceId" : "refLead",
+  "body" : { 
+     	Salutation : vars.lead_data."parts"."salutation"."content",	
+	FirstName : vars.lead_data."parts"."firstname"."content",
+	LastName : vars.lead_data."parts"."lastname"."content",
+	Email : vars.lead_data."parts"."email"."content",
+	Phone : vars.lead_data."parts"."phone"."content",
+	Company : "MG",
+	Street : vars.lead_data."parts"."street"."content",
+	City : vars.lead_data."parts"."city"."content",
+	State : vars.lead_data."parts"."state"."content",
+	PostalCode : vars.lead_data."parts"."postcode"."content",
+	Country : vars.lead_data."parts"."country"."content",
+	Description : vars.lead_data."parts"."message"."content",
+	Availability__c : "Yes",
+	Marketing_Use__c : "Yes",
+	Need_Appointment__c : "Yes",
+    "Dealer_contact__c" : getDealer(post, vars.lead_data."parts"."postcode"."content") ,
+    "Customer_contact__c" : vars.contactId,
+    Expected_Service__c	 : vars.lead_data."parts"."service_type"."content",
+    "vehicle_model__c" : vars.lead_data."parts"."vehicle_model"."content",
+    vehicle__c : getCar(car, vars.lead_data."parts"."vehicle_model"."content")
+    }
+  }]
+}
+]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce-composite:execute-composite-request doc:name="Execute composite request" doc:id="9eef7bb8-0f49-4da7-bdc8-837268a875f0" config-ref="Salesforce_Composite_Config1"/>
+				<logger level="INFO" doc:name="Logger" doc:id="715a5598-b3de-4370-989a-322517d5b138" />
+				<ee:transform doc:name="Transform Message" doc:id="d0048bd0-2af1-4398-a1e4-581b23bcbb4b" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+   id : payload.compositeResponse.body.id[0],
+   status : payload.compositeResponse.body.success[0] 
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="7087ce66-f777-4b1f-983a-87b514b9bdc9" />
+				<ee:transform doc:name="Transform Message" doc:id="2639f5a0-475d-4271-86d1-4447458b888e" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+id : payload.Id[0]
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="contactCheckFlow" doc:id="5c19193b-66a4-4468-a36f-ad372fea2d3e" >
+		<ee:transform doc:name="Transform Message" doc:id="6445168b-aae8-4a34-82fb-54472f11a80a" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="lead_data" ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="62b87c9c-5719-4adf-ad2e-610c611728e2" />
+		<salesforce:query doc:name="Query" doc:id="4a9ab462-a086-4d12-bd86-b3191759b18e" config-ref="Salesforce_Config">
+			<salesforce:salesforce-query ><![CDATA[SELECT Id FROM Contact WHERE Email = :email AND Phone = :phone]]></salesforce:salesforce-query>
+			<salesforce:parameters ><![CDATA[#[{
+	email : "'" ++ vars.lead_data."parts"."email"."content" as String ++ "'",
+	phone : "'" ++ vars.lead_data."parts"."phone"."content" as String ++ "'"
+}]]]></salesforce:parameters>
+		</salesforce:query>
+		<choice doc:name="Choice" doc:id="fa473881-2fda-42eb-a43c-e669cf98f0ba" >
+			<when expression="#[payload.Id == null]">
+				<ee:transform doc:name="Transform Message" doc:id="6c5e3060-f2ef-4cf2-be50-2915f58eafe6" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+import * from modules::postcode
+import * from modules::vehicle
+output application/json
+---
+{
+"compositeRequest" : [{
+  "method" : "POST",
+  "url" : "/services/data/v53.0/sobjects/Contact",
+  "referenceId" : "refCustContact",
+  "body" : { RecordTypeId : "0125j000000Po9jAAC",
+               Salutation : vars.lead_data."parts"."salutation"."content",	
+	FirstName : vars.lead_data."parts"."firstname"."content",
+	LastName : vars.lead_data."parts"."lastname"."content",
+	Email : vars.lead_data."parts"."email"."content",
+	Phone : vars.lead_data."parts"."phone"."content",
+	MailingStreet : vars.lead_data."parts"."street"."content",
+	MailingCity : vars.lead_data."parts"."city"."content",
+	"MailingState" : vars.lead_data."parts"."state"."content",
+	"MailingPostalCode" : vars.lead_data."parts"."postcode"."content",
+	MailingCountry : vars.lead_data."parts"."country"."content" }
+  },
+{
+  "method" : "POST",
+  "url" : "/services/data/v53.0/sobjects/Lead",
+  "referenceId" : "refLead",
+  "body" : { 
+     	Salutation : vars.lead_data."parts"."salutation"."content",	
+	FirstName : vars.lead_data."parts"."firstname"."content",
+	LastName : vars.lead_data."parts"."lastname"."content",
+	Email : vars.lead_data."parts"."email"."content",
+	Phone : vars.lead_data."parts"."phone"."content",
+	Company : "MG",
+	Street : vars.lead_data."parts"."street"."content",
+	City : vars.lead_data."parts"."city"."content",
+	State : vars.lead_data."parts"."state"."content",
+	PostalCode : vars.lead_data."parts"."postcode"."content",
+	Country : vars.lead_data."parts"."country"."content",
+	Description : vars.lead_data."parts"."message"."content",
+	Availability__c : "Yes",
+	Marketing_Use__c : "Yes",
+	Need_Appointment__c : "Yes",
+    "Dealer_contact__c" : getDealer(post, vars.lead_data."parts"."postcode"."content"),
+    "Customer_contact__c" : "@{refCustContact.id}",
+    Expected_Service__c	 : vars.lead_data."parts"."service_type"."content",
+    "vehicle_model__c" : vars.lead_data."parts"."vehicle_model"."content",
+    vehicle__c : getCar(car, vars.lead_data."parts"."vehicle_model"."content")
+    }
+  }]
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<salesforce-composite:execute-composite-request doc:name="Execute composite request" doc:id="727ac12f-2c87-452b-b117-3072fbf90235" config-ref="Salesforce_Composite_Config1"/>
+				<logger level="INFO" doc:name="Logger" doc:id="a5666673-a058-414b-a5d0-85cd2317395f" />
+				<ee:transform doc:name="Transform Message" doc:id="2c963151-bb7a-4c1e-9d2c-7ec22d2318bb" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+id : payload.compositeResponse.body.id[0],
+status : payload.compositeResponse.body.success[0] 
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</when>
+			<otherwise >
+				<logger level="INFO" doc:name="Logger" doc:id="5f454856-45eb-4002-915f-706482c32360" />
+				<ee:transform doc:name="Transform Message" doc:id="c8b1a6f2-1c74-40d3-afec-82b838f155a5" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+{
+id : payload.Id[0]
+}]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
