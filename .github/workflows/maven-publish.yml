@@ -26,5 +26,5 @@ jobs:
       run: mvn -B package --file pom.xml
 
     - name: Deploy to cloudhub
-      run: mvn deploy -DmuleDeploy -Dusername=${{ cloudhub_username}} -Dpassword=${{ cloudhub_password }} -Denvironment=${{ dev_environment }} -DapplicationName=${{ dev_application_name }} -DworkerType=${{ worker_type }}
+      run: mvn deploy -DmuleDeploy -Dusername=${{ secrets.cloudhub_username}} -Dpassword=${{ secrets.cloudhub_password }} -Denvironment=${{ secrets.dev_environment }} -DapplicationName=${{ secrets.dev_application_name }} -DworkerType=${{ secrets.worker_type }}
       
