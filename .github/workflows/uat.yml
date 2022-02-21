@@ -1,11 +1,11 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow 
+# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow executon time
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: dev deployment develop branch
+name: uat deployment master branch
 
 on:
   push:
-    branches: [ develop ]
+    branches: [ master ]
 
 jobs:
   build:
@@ -85,5 +85,5 @@ jobs:
     - name: Deploy to CloudHub
       run: |
         artifactName=$(ls *.jar | head -1)
-        mvn deploy -DmuleDeploy -Dusername=${{ secrets.cloudhub_username}} -Dpassword=${{ secrets.cloudhub_password }} -Denvironment=${{ secrets.dev_environment }} -DapplicationName=${{ secrets.dev_application_name }} -DworkerType=${{ secrets.worker_type }}
+        mvn deploy -DmuleDeploy -Dusername=${{ secrets.cloudhub_username}} -Dpassword=${{ secrets.cloudhub_password }} -Denvironment=${{ secrets.uat_environment }} -DapplicationName=${{ secrets.uat_application_name }} -DworkerType=${{ secrets.worker_type }}
     
