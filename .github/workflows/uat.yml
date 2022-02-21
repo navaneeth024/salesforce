@@ -1,151 +1,88 @@
 # This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
 # For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
 
-name: MuleSoft deployment with GitHub Actions CI
-
- 
-
-# Controls when the action will run.
+name: uat deployment develop branch
 
 on:
-
-# Triggers the workflow on push or pull request events on dev branch
-
-push:
-
-branches: [master ]
-
-
-
- 
-
-# Allows you to run this workflow manually from the Actions tab workflow_dispatch:
-
- 
-
-# A workflow run is made up of one or more jobs
+  push:
+    branches: [ uat ]
 
 jobs:
+  build:
 
-# “build”
+    runs-on: ubuntu-latest
 
-build:
-
-# The type of runner that the job will run on
-
-runs-on: ubuntu-latest
-
- 
-
-# Steps represent a sequence of tasks that will be executed as part of the job
-
-steps:
-
- 
-
-# Checks-out your repository
-
-– uses: actions/checkout@v2
-
-– uses: actions/cache@v1
-
-with:
-
-path: ~/.m2/repository
-
-key: ${{ runner.os }}-maven-${{ hashFiles(‘**/pom.xml’) }}
-
-restore-keys: |
-
-${{ runner.os }}-maven-
-
-– name: Set up JDK 1.8
-
-uses: actions/setup-java@v1
-
-with:
-
-java-version: 1.8
-
- 
-
-– name : build
-
-run: mvn -B package –file pom.xml
-
- 
-
-– name: Artifact file name with commit hash
-
-run: |
-
-artifactName1=$(ls target/*.jar | head -1)
-
-commitHash=$(git rev-parse –short “$GITHUB_SHA”)
-
-artifactName2=$(ls target/*.jar | head -1 | sed “s/.jar/.$commitHash.jar/g”)
-
-mv $artifactName1 $artifactName2
-
- 
-
-– uses: actions/upload-artifact@master
-
-with:
-
-name: artifacts
-
-path: target/*.jar
-
- 
-
-deploy:
-
-needs: build
-
-runs-on: ubuntu-latest
-
-steps:
-
-– uses: actions/checkout@v2
-
-– uses: actions/cache@v1
-
-with:
-
-path: ~/.m2/repository
-
-key: ${{ runner.os }}-maven-${{ hashFiles(‘**/pom.xml’) }}
-
-restore-keys: |
-
-${{ runner.os }}-maven-
-
-– uses: actions/download-artifact@master
-
-with:
-
-name: artifacts
-
- 
-
-– name: Deploy to Anypoint Platform
-
-env:
-
-USERNAME: ${{ secrets.CLOUDHUB_USERNAME }}
-
-PASSWORD: ${{ secrets.CLOUDHUB_PASSWORD }}
-
-run: |
-
-artifactName=$(ls *.jar | head -1)
-
- 
-
- 
-
-- name: Deploy to CloudHub
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    - name: Set up JDK 1.8
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    - name: maven-settings-xml-action
+      uses: whelk-io/maven-settings-xml-action@v16
+      with:
+         repositories: |
+                [
+                  {
+                    "id": "MuleRepository",
+                    "name": "MuleRepository",
+                    "url": "https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/",
+                    "releases": {
+                      "enabled": "true"
+                    },
+                    "snapshots": {
+                      "enabled": "true"
+                    }
+                  }
+                ]
+         servers: |
+                [
+                  {
+                    "id": "anypoint-exchange-v2",
+                    "username": "${{ secrets.cloudhub_username }}",
+                    "password": "${{ secrets.cloudhub_password }}",
+                    "configuration": {
+                      "httpConfiguration": {
+                        "all": {
+                          "usePreemptive": "true"
+                        }
+                      }
+                    }
+                   }
+                ]    
+    - name: Build
+      run: mvn -B package --file pom.xml
+    - name: Stamp artifact file name with commit hash
+      run: |
+        artifactName1=$(ls target/*.jar | head -1)
+        commitHash=$(git rev-parse --short "$GITHUB_SHA")
+        artifactName2=$(ls target/*.jar | head -1 | sed "s/.jar/.$commitHash.jar/g")
+        mv $artifactName1 $artifactName2
+    - uses: actions/upload-artifact@master
+      with:
+          name: artifacts
+          path: target/*.jar
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:    
+    - uses: actions/checkout@v2
+    - uses: actions/cache@v1
+      with:
+        path: ~/.m2/repository
+        key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+        restore-keys: |
+          ${{ runner.os }}-maven-
+    - uses: actions/download-artifact@master
+      with:
+        name: artifacts
+    - name: Deploy to CloudHub
       run: |
         artifactName=$(ls *.jar | head -1)
         mvn deploy -DmuleDeploy -Dusername=${{ secrets.cloudhub_username}} -Dpassword=${{ secrets.cloudhub_password }} -Denvironment=${{ secrets.uat_environment }} -DapplicationName=${{ secrets.uat_application_name }} -DworkerType=${{ secrets.worker_type }}
