@@ -1,17 +1,11 @@
-# This workflow will build a Java project with Maven, and cache/restore any dependencies to improve the workflow execution time
-# For more information see: https://help.github.com/actions/language-and-framework-guides/building-and-testing-java-with-maven
-
-name: dev deployment develop branch
-
+# This workflow will build a MuleSoft project and deploy to CloudHub
+name: TestCICD Pipeline UCCU
 on:
   push:
-    branches: [ develop ]
-
+    branches: [dev]
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v2
     - uses: actions/cache@v1
@@ -24,38 +18,6 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 1.8
-    - name: maven-settings-xml-action
-      uses: whelk-io/maven-settings-xml-action@v16
-      with:
-         repositories: |
-                [
-                  {
-                    "id": "MuleRepository",
-                    "name": "MuleRepository",
-                    "url": "https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/",
-                    "releases": {
-                      "enabled": "true"
-                    },
-                    "snapshots": {
-                      "enabled": "true"
-                    }
-                  }
-                ]
-         servers: |
-                [
-                  {
-                    "id": "anypoint-exchange-v2",
-                    "username": "${{ secrets.cloudhub_username }}",
-                    "password": "${{ secrets.cloudhub_password }}",
-                    "configuration": {
-                      "httpConfiguration": {
-                        "all": {
-                          "usePreemptive": "true"
-                        }
-                      }
-                    }
-                   }
-                ]    
     - name: Build
       run: mvn -B package --file pom.xml
     - name: Stamp artifact file name with commit hash
