@@ -16,6 +16,39 @@ jobs:
       uses: actions/setup-java@v1
       with:
         java-version: 14
+        
+    - name: maven-settings-xml-action
+      uses: whelk-io/maven-settings-xml-action@v16
+      with:
+         repositories: |
+                [
+                  {
+                    "id": "MuleRepository",
+                    "name": "MuleRepository",
+                    "url": "https://repository.mulesoft.org/nexus-ee/content/repositories/releases-ee/",
+                    "releases": {
+                      "enabled": "true"
+                    },
+                    "snapshots": {
+                      "enabled": "true"
+                    }
+                  }
+                ]
+         servers: |
+                [
+                  {
+                    "id": "anypoint-exchange-v2",
+                    "username": "${{ secrets.cloudhub_username }}",
+                    "password": "${{ secrets.cloudhub_password }}",
+                    "configuration": {
+                      "httpConfiguration": {
+                        "all": {
+                          "usePreemptive": "true"
+                        }
+                      }
+                    }
+                   }
+                ]        
 
     - name: Build project with Maven
       run: mvn -B package --file pom.xml
